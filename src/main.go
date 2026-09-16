@@ -12,7 +12,9 @@ import (
 var esp32Conn *websocket.Conn
 
 func deviceHandler(w http.ResponseWriter, r *http.Request) {
-	conn, err := websocket.Accept(w, r, nil)
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		OriginPatterns: []string{"*"},
+	})
 	if err != nil {
 		log.Println("websocket accept failed", err)
 		return
@@ -52,7 +54,7 @@ func wakeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(w, "wake sent")
+	fmt.Println("wake sent")
 }
 func main() {
 	http.HandleFunc("/device", deviceHandler)
