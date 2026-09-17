@@ -20,6 +20,7 @@ var (
 	wakeAPIToken string
 )
 
+// Function that handles ESP32 connection to the server
 func deviceHandler(w http.ResponseWriter, r *http.Request) {
 	auth := r.Header.Get("Authorization")
 
