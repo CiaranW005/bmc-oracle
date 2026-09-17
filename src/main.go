@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Top level variables shared around the file
 var (
 	esp32Conn *websocket.Conn
 	connMu    sync.RWMutex
