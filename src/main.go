@@ -5,13 +5,29 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"sync"
 
 	"github.com/coder/websocket"
+	"github.com/joho/godotenv"
 )
 
-var esp32Conn *websocket.Conn
+var (
+	esp32Conn *websocket.Conn
+	connMu    sync.RWMutex
+
+	deviceToken  string
+	wakeAPIToken string
+)
 
 func deviceHandler(w http.ResponseWriter, r *http.Request) {
+	auth := r.Header.Get("Authorization")
+
+	if auth != "Bearer "+deviceToken {
+		http.Error(w, "Unauthorised", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		OriginPatterns: []string{"*"},
 	})
@@ -20,7 +36,9 @@ func deviceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	connMu.Lock()
 	esp32Conn = conn
+	connMu.Unlock()
 
 	fmt.Println("ESP32 connected")
 
@@ -29,7 +47,12 @@ func deviceHandler(w http.ResponseWriter, r *http.Request) {
 		_, msg, err := conn.Read(context.Background())
 		if err != nil {
 			fmt.Println("ESP32 disconnected", err)
-			esp32Conn = nil
+
+			connMu.Lock()
+			if esp32Conn == conn {
+				esp32Conn = nil
+			}
+			connMu.Unlock()
 			return
 		}
 
@@ -38,12 +61,28 @@ func deviceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func wakeHandler(w http.ResponseWriter, r *http.Request) {
-	if esp32Conn == nil {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	auth := r.Header.Get("Authorization")
+
+	if auth != "Bearer "+wakeAPIToken {
+		http.Error(w, "Unauthorised", http.StatusUnauthorized)
+		return
+	}
+
+	connMu.RLock()
+	conn := esp32Conn
+	connMu.RUnlock()
+
+	if conn == nil {
 		http.Error(w, "ESP32 not connected", http.StatusServiceUnavailable)
 		return
 	}
 
-	err := esp32Conn.Write(
+	err := conn.Write(
 		context.Background(),
 		websocket.MessageText,
 		[]byte("wake"),
@@ -55,12 +94,31 @@ func wakeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("wake sent")
+	w.WriteHeader(http.StatusNoContent)
 }
+
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found using enviroment variables")
+	}
+
+	deviceToken = os.Getenv("ESP32_DEVICE_TOKEN")
+
+	if deviceToken == "" {
+		log.Fatal("ESP32_DEVICE_TOKEN is not set")
+	}
+
+	wakeAPIToken = os.Getenv("WAKE_API_TOKEN")
+
+	if wakeAPIToken == "" {
+		log.Fatal("WAKE_API_TOKEN is not set")
+	}
+
 	http.HandleFunc("/device", deviceHandler)
 	http.HandleFunc("/wake", wakeHandler)
 
 	fmt.Println("BMC Oracle listening on :8080")
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe("localhost:8080", nil))
 }
