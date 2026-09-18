@@ -23,8 +23,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/device", deviceManager.Handler)
-	http.HandleFunc("/wake", bmcAPI.Wake)
+	mux.HandleFunc("POST /api/wake", bmcAPI.Wake)
 
 	log.Println("BMC Oracle listening on :8080")
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	log.Fatal(http.ListenAndServe("localhost:8080", mux))
 }

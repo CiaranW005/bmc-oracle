@@ -6,15 +6,6 @@ import (
 )
 
 func (a *API) Wake(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(
-			w,
-			"Method not allowed",
-			http.StatusMethodNotAllowed,
-		)
-		return
-	}
-
 	if !a.authenticated(r) {
 		http.Error(
 			w,
