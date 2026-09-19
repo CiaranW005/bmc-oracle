@@ -10,15 +10,22 @@ import (
 
 func (m *Manager) Handler(w http.ResponseWriter, r *http.Request) {
 	if !m.auth.Valid(r) {
+		log.Println("Device authentication failed")
+		log.Printf("Authorization header present: %t", r.Header.Get("Authorization") != "")
+
 		http.Error(w, "Unauthorised", http.StatusUnauthorized)
 		return
 	}
 
+	log.Println("Device authenticated")
+
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		log.Println("Websocket accept failed:", err)
+		log.Printf("Websocket accept failed: %v", err)
 		return
 	}
+
+	log.Println("WebSocket connected")
 
 	// if another ESP32 connection exists, replace it with a this new one
 	old := m.setConnection(conn)
