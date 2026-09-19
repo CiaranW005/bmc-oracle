@@ -6,15 +6,6 @@ import (
 )
 
 func (a *API) Wake(w http.ResponseWriter, r *http.Request) {
-	if !a.authenticated(r) {
-		http.Error(
-			w,
-			"Unauthorised",
-			http.StatusUnauthorized,
-		)
-		return
-	}
-
 	err := a.devices.SendCommand(
 		r.Context(),
 		"wake",

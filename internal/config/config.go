@@ -8,14 +8,21 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type Enviroment string
+
 const (
 	EnvDeviceToken  = "ESP32_DEVICE_TOKEN"
-	EnvWakeAPIToken = "WAKE_API_TOKEN"
+	EnvPasswordHash = "BMC_PASSWORD_HASH"
+	EnvEnviroment   = "BMC_ENV"
+
+	Development Enviroment = "development"
+	Production  Enviroment = "production"
 )
 
 type Config struct {
+	Enviroment   Enviroment
 	DeviceToken  string
-	WakeAPIToken string
+	PasswordHash string
 }
 
 func Load() (Config, error) {
@@ -30,7 +37,7 @@ func Load() (Config, error) {
 		dest *string
 	}{
 		{EnvDeviceToken, &cfg.DeviceToken},
-		{EnvWakeAPIToken, &cfg.WakeAPIToken},
+		{EnvPasswordHash, &cfg.PasswordHash},
 	}
 
 	for _, env := range requiredVars {
@@ -41,6 +48,13 @@ func Load() (Config, error) {
 
 		*env.dest = value
 	}
+
+	enviroment, err := loadEnviroment()
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg.Enviroment = enviroment
 
 	return cfg, nil
 }
@@ -53,4 +67,20 @@ func requiredEnv(key string) (string, error) {
 	}
 
 	return value, nil
+}
+
+func loadEnviroment() (Enviroment, error) {
+	value, err := requiredEnv(EnvEnviroment)
+	if err != nil {
+		return "", err
+	}
+
+	env := Enviroment(value)
+
+	switch env {
+	case Development, Production:
+		return env, nil
+	default:
+		return "", fmt.Errorf("Invalid BMC_ENV: %s", value)
+	}
 }
