@@ -50,6 +50,18 @@ func main() {
 			http.HandlerFunc(bmcAPI.Wake),
 		),
 	)
+	mux.Handle(
+		"POST /api/reset",
+		bmcAuth.RequireAuth(
+			http.HandlerFunc(bmcAPI.Reset),
+		),
+	)
+	mux.Handle(
+		"POST /api/power-off",
+		bmcAuth.RequireAuth(
+			http.HandlerFunc(bmcAPI.PowerOff),
+		),
+	)
 
 	log.Println("BMC Oracle listening on :8080")
 	log.Fatal(http.ListenAndServe("localhost:8080", middleware.Logger(mux)))
