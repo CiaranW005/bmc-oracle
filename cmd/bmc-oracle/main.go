@@ -20,13 +20,19 @@ func main() {
 	deviceAuth := device.NewBearerAuthenticator(cfg.DeviceToken)
 	deviceManager := device.NewManager(deviceAuth)
 
+	googleAuth, err := auth.NewGoogleAuthenticator()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	bmcAuth := auth.NewManager(cfg.PasswordHash, cfg.Enviroment == config.Production)
-	bmcAPI := api.New(deviceManager, bmcAuth)
+	bmcAPI := api.New(deviceManager, bmcAuth, googleAuth)
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/device", deviceManager.Handler)
 	mux.HandleFunc("POST /api/login", bmcAPI.Login)
+	mux.HandleFunc("POST /api/auth/google", bmcAPI.GoogleLogin)
 
 	mux.Handle(
 		"POST /api/logout",
@@ -57,7 +63,7 @@ func main() {
 		),
 	)
 	mux.Handle(
-		"POST /api/power-off",
+		"POST /api/power_off",
 		bmcAuth.RequireAuth(
 			http.HandlerFunc(bmcAPI.PowerOff),
 		),

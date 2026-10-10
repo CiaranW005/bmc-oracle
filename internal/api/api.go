@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"net/http"
+
+	"github.com/CiaranW005/bmc-oracle/internal/auth"
 )
 
 type DeviceCommander interface {
@@ -16,16 +18,19 @@ type Authenticator interface {
 }
 
 type API struct {
-	devices DeviceCommander
-	auth    Authenticator
+	devices    DeviceCommander
+	auth       Authenticator
+	googleAuth *auth.GoogleAuthenticator
 }
 
 func New(
 	devices DeviceCommander,
 	auth Authenticator,
+	googleAuth *auth.GoogleAuthenticator,
 ) *API {
 	return &API{
-		devices: devices,
-		auth:    auth,
+		devices:    devices,
+		auth:       auth,
+		googleAuth: googleAuth,
 	}
 }
