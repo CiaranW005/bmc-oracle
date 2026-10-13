@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log"
 	"os"
 	"strings"
 
@@ -50,7 +51,7 @@ func (g *GoogleAuthenticator) Verify(
 	if err != nil {
 		return err
 	}
-	// log.Printf("Google account subject: %s", payload.Subject)
+	log.Printf("Google account subject: %s", payload.Subject)
 
 	if payload.Issuer != "accounts.google.com" &&
 		payload.Issuer != "https://accounts.google.com" {
