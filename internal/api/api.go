@@ -18,6 +18,8 @@ type DeviceCommander interface {
 		timeout time.Duration,
 	) (protocol.Message, error)
 	SubscribeStatus() (<-chan device.Status, func())
+	BeginWake(id protocol.ID) bool
+	FinishWake(id protocol.ID, success bool, message string)
 }
 
 type Authenticator interface {

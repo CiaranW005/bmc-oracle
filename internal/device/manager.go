@@ -12,10 +12,16 @@ import (
 	"github.com/coder/websocket"
 )
 
+type WakeProgress struct {
+	ID    protocol.ID `json:"id"`
+	State string      `json:"state"`
+	Error string      `json:"error,omitempty"`
+}
 type Status struct {
-	BMC      bool      `json:"bmc"`
-	PC       bool      `json:"pc"`
-	LastSeen time.Time `json:"lastSeen"`
+	BMC      bool          `json:"bmc"`
+	PC       bool          `json:"pc"`
+	LastSeen time.Time     `json:"lastSeen"`
+	Wake     *WakeProgress `json:"wake,omitempty"`
 }
 
 type Manager struct {
@@ -72,6 +78,10 @@ func NewManager(auth Authenticator) *Manager {
 						),
 					)
 					return
+				}
+
+				if message.Type == protocol.TypeWake {
+					m.acknowledgeWake(message.ID)
 				}
 
 				log.Printf("Device acknowledged message %s", message.ID)

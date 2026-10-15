@@ -16,7 +16,16 @@ func (a *API) sendCommand(
 	command protocol.MessageType,
 	timeout time.Duration,
 ) {
-	writeResult := func(status int, state, message string) {
+	message := protocol.NewMessage(command, nil)
+
+	writeResult := func(status int, state, messageText string) {
+		if command == protocol.TypeWake {
+			a.devices.FinishWake(
+				message.ID,
+				state == "online",
+				messageText,
+			)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
 
@@ -27,13 +36,20 @@ func (a *API) sendCommand(
 		}{
 			Command: command,
 			State:   state,
-			Error:   message,
+			Error:   messageText,
 		}); err != nil {
 			log.Printf("Failed to write command response: %v", err)
 		}
 	}
 
-	message := protocol.NewMessage(command, nil)
+	if command == protocol.TypeWake && !a.devices.BeginWake(message.ID) {
+		writeResult(
+			http.StatusConflict,
+			"failed",
+			"A wake operation is already pending",
+		)
+		return
+	}
 
 	response, err := a.devices.SendAndWait(
 		r.Context(),
@@ -91,7 +107,7 @@ func (a *API) sendCommand(
 		if result.Error == "" {
 			result.Error = "Device reported command failure"
 		}
-		writeResult(http.StatusBadGateway, "failed", result.Error)
+		writeResult(http.StatusUnprocessableEntity, "failed", result.Error)
 		return
 	}
 
@@ -104,7 +120,7 @@ func (a *API) sendCommand(
 }
 
 func (a *API) Wake(w http.ResponseWriter, r *http.Request) {
-	a.sendCommand(w, r, protocol.TypeWake, 20*time.Second)
+	a.sendCommand(w, r, protocol.TypeWake, 55*time.Second)
 }
 
 func (a *API) Reset(w http.ResponseWriter, r *http.Request) {
