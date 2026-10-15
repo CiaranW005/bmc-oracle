@@ -3,12 +3,21 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/CiaranW005/bmc-oracle/internal/auth"
+	"github.com/CiaranW005/bmc-oracle/internal/device"
+	"github.com/CiaranW005/go-protocol"
 )
 
 type DeviceCommander interface {
-	SendCommand(ctx context.Context, command string) error
+	SendAndWait(
+		ctx context.Context,
+		message protocol.Message,
+		policy protocol.RetryPolicy,
+		timeout time.Duration,
+	) (protocol.Message, error)
+	SubscribeStatus() (<-chan device.Status, func())
 }
 
 type Authenticator interface {

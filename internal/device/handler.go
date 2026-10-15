@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/CiaranW005/go-protocol"
 	"github.com/coder/websocket"
 )
 
@@ -47,12 +48,57 @@ func (m *Manager) Handler(w http.ResponseWriter, r *http.Request) {
 
 func (m *Manager) readLoop(conn *websocket.Conn) {
 	for {
-		_, msg, err := conn.Read(context.Background())
+		_, data, err := conn.Read(context.Background())
 		if err != nil {
 			log.Println("ESP32 disconnected:", err)
 			return
 		}
 
-		log.Printf("ESP32: %s\n", string(msg))
+		packet, err := protocol.DeserialisePacket(data)
+		if err != nil {
+			log.Printf("Invalid pakcet: %v\n", err)
+			continue
+		}
+
+		switch p := packet.(type) {
+		case protocol.Acknowledgement:
+			if !m.tracker.Acknowledgement(p) {
+				log.Printf("Unexpected acknowledgement: %s\n", p.ID)
+			}
+
+		case protocol.Message:
+			if m.dedup.IsDuplicate(p.ID) {
+				log.Printf("Duplicate message: %s\n", p.ID)
+
+				ack := protocol.NewAcknowledgement(
+					p.ID,
+					protocol.AckOk,
+				)
+
+				if err := m.SendPacket(context.Background(), ack); err != nil {
+					log.Printf("Failed to acknowledge duplicate: %v\n", err)
+				}
+
+				continue
+			}
+
+			log.Printf("Recieved message: %s\n", p.Type)
+
+			ack := protocol.NewAcknowledgement(
+				p.ID,
+				protocol.AckOk,
+			)
+
+			if err := m.SendPacket(context.Background(), ack); err != nil {
+				log.Printf("Failed to acknowledge message: %v\n", err)
+			}
+
+			if p.ReplyTo != "" {
+				if !m.responses.Resolve(p) {
+					log.Printf("Unexpected or late response: %s", p.ReplyTo)
+				}
+				continue
+			}
+		}
 	}
 }

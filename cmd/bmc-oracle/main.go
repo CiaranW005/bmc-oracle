@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -19,6 +20,8 @@ func main() {
 
 	deviceAuth := device.NewBearerAuthenticator(cfg.DeviceToken)
 	deviceManager := device.NewManager(deviceAuth)
+	go deviceManager.Run(context.Background())
+	go deviceManager.StartTelemetry(context.Background())
 
 	googleAuth, err := auth.NewGoogleAuthenticator()
 	if err != nil {
@@ -51,6 +54,12 @@ func main() {
 	)
 
 	mux.Handle(
+		"GET /api/status/events",
+		bmcAuth.RequireAuth(
+			http.HandlerFunc(bmcAPI.StatusEvents),
+		),
+	)
+	mux.Handle(
 		"POST /api/wake",
 		bmcAuth.RequireAuth(
 			http.HandlerFunc(bmcAPI.Wake),
@@ -70,5 +79,5 @@ func main() {
 	)
 
 	log.Println("BMC Oracle listening on :8080")
-	log.Fatal(http.ListenAndServe("localhost:8080", middleware.Logger(mux)))
+	log.Fatal(http.ListenAndServe(":8080", middleware.Logger(mux)))
 }
