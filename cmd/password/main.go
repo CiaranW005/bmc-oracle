@@ -19,6 +19,8 @@ func main() {
 
 	fmt.Println()
 
+	// Generate the bcrypt hash to store in BMC_PASSWORD_HASH.
+	// The server checks login passwords against this hash.
 	hash, err := bcrypt.GenerateFromPassword(
 		password,
 		bcrypt.DefaultCost,

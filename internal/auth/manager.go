@@ -22,13 +22,18 @@ type Manager struct {
 	cookieName   string
 	secureCookie bool
 
-	mu       sync.RWMutex
+	mu sync.RWMutex
+
+	// Sessions exist only in memory, so restarting the server signs everyone out.
+	// Keys are SHA-256 hashes of the tokens held in browser cookies.
 	sessions map[[32]byte]Session
 }
 
 func NewManager(passwordHash string, secureCookie bool) *Manager {
 	cookieName := "bmc_sesssion"
 
+	// Production uses the __Host- prefix with Secure, Path=/, and no Domain
+	// to restrict the session cookie to this host over HTTPS.
 	if secureCookie {
 		cookieName = "__Host-bmc_session"
 	}
@@ -63,6 +68,7 @@ func (m *Manager) StartSession(w http.ResponseWriter) error {
 	key := sha256.Sum256([]byte(token))
 
 	m.mu.Lock()
+	// Sessions expire eight hours after creation; requests do not extend expiry.
 	m.sessions[key] = Session{
 		Expires: time.Now().Add(8 * time.Hour),
 	}

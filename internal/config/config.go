@@ -26,6 +26,8 @@ type Config struct {
 }
 
 func Load() (Config, error) {
+	// Load local development values from .env when available.
+	// Existing process environment values take precedence.
 	if err := godotenv.Load(); err != nil {
 		log.Println("No local .env file found; using process enviroment")
 	}

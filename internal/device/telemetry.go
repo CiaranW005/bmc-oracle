@@ -57,7 +57,7 @@ func (m *Manager) pollTelemetry(ctx context.Context) {
 	}
 
 	var body struct {
-		PC *bool `json:"pc"`
+		PC *bool `json:"pc"` // A pointer distinguishes a valid false value from a missing or null pc field.
 	}
 
 	if err := json.Unmarshal(raw, &body); err != nil || body.PC == nil {
@@ -66,5 +66,7 @@ func (m *Manager) pollTelemetry(ctx context.Context) {
 		return
 	}
 
+	// A valid telemetry response confirms BMC availability.
+	// PC availability comes from the ESP32's report of the PC agent.
 	m.publishStatus(true, *body.PC)
 }

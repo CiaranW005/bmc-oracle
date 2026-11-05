@@ -28,7 +28,7 @@ func (m *Manager) Handler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("WebSocket connected")
 
-	// if another ESP32 connection exists, replace it with a this new one
+	// Replace any existing ESP32 connection with this one.
 	old := m.setConnection(conn)
 
 	if old != nil && old != conn {
@@ -38,7 +38,7 @@ func (m *Manager) Handler(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	// When this handler eventually exits, remove this connection if its still current
+	// When this handler exits, clear its connection only if it is still current.
 	defer m.clearConnection(conn)
 
 	log.Println("ESP32 connected")
@@ -67,6 +67,8 @@ func (m *Manager) readLoop(conn *websocket.Conn) {
 			}
 
 		case protocol.Message:
+			// Acknowledge duplicate messages again so the device stops retrying,
+			// but do not resolve the same response twice.
 			if m.dedup.IsDuplicate(p.ID) {
 				log.Printf("Duplicate message: %s\n", p.ID)
 

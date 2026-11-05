@@ -21,6 +21,8 @@ func (a *API) StatusEvents(w http.ResponseWriter, r *http.Request) {
 
 	defer controller.SetWriteDeadline(time.Time{})
 
+	// Give each event a bounded write time so a stalled client cannot hold the
+	// stream indefinitely. Flush immediately to deliver updates as they occur.
 	write := func(message string) error {
 		if err := controller.SetWriteDeadline(
 			time.Now().Add(10 * time.Second),

@@ -7,6 +7,8 @@ import (
 )
 
 func (m *Manager) SubscribeStatus() (<-chan Status, func()) {
+	// SubscribeStatus immediately supplies the current snapshot, then updates.
+	// The caller must invoke the returned unsubscribe function when finished.
 	updates := make(chan Status, 1)
 
 	m.statusMu.Lock()
@@ -23,6 +25,9 @@ func (m *Manager) SubscribeStatus() (<-chan Status, func()) {
 	return updates, unsubscribe
 }
 
+// Caller must hold statusMu.
+// Replace a buffered snapshot when necessary so slow subscribers receive
+// the latest state without blocking publication.
 func (m *Manager) broadcastStatusLocked() {
 	for updates := range m.subscribers {
 		select {
@@ -46,6 +51,8 @@ func (m *Manager) publishStatus(bmc, pc bool) {
 	m.status.BMC = bmc
 	m.status.PC = pc
 
+	// Update LastSeen only when the BMC responds successfully.
+	// Leave it unchanged when reporting the BMC offline.
 	if bmc {
 		m.status.LastSeen = time.Now()
 	}
@@ -57,6 +64,8 @@ func (m *Manager) BeginWake(id protocol.ID) bool {
 	m.statusMu.Lock()
 	defer m.statusMu.Unlock()
 
+	// Wake progresses from sending to booting after acknowledgement, then to
+	// online or failed. Reject another wake while either active state is present.
 	current := m.status.Wake
 	if current != nil &&
 		(current.State == "sending" || current.State == "booting") {
@@ -95,6 +104,8 @@ func (m *Manager) FinishWake(
 	m.statusMu.Lock()
 	defer m.statusMu.Unlock()
 
+	// Ignore stale completions so an older request cannot overwrite the current
+	// wake operation or change an already finished result.
 	current := m.status.Wake
 	if current == nil || current.ID != id ||
 		(current.State != "sending" && current.State != "booting") {

@@ -25,14 +25,14 @@ type Status struct {
 }
 
 type Manager struct {
-	connMu  sync.RWMutex
-	writeMu sync.Mutex
+	connMu  sync.RWMutex // connMu protects which connection is current
+	writeMu sync.Mutex   // writeMu serializes packet writes. Network writes happen without holding connMu.
 
 	conn *websocket.Conn
 	auth Authenticator
 
-	tracker   *protocol.AckTracker
-	responses *protocol.ResponseTracker
+	tracker   *protocol.AckTracker      // The acknowledgement tracker handles delivery;
+	responses *protocol.ResponseTracker // the response tracker waits for the command result. An acknowledgement alone does not mean completion.
 	dedup     *protocol.Deduplicator
 
 	statusMu    sync.RWMutex
@@ -161,6 +161,8 @@ func (m *Manager) SendTracked(
 		return err
 	}
 
+	// Register before sending so an immediate acknowledgement can be matched.
+	// Remove the pending entry if the initial write fails.
 	if err := m.SendPacket(ctx, message); err != nil {
 		m.tracker.Cancel(message.ID)
 		return err
@@ -175,6 +177,8 @@ func (m *Manager) SendAndWait(
 	policy protocol.RetryPolicy,
 	timeout time.Duration,
 ) (protocol.Message, error) {
+	// Register the response waiter before sending to avoid missing a fast reply.
+	// Always remove it when this call returns, including on context cancellation.
 	resultCH, err := m.responses.Track(message, timeout)
 	if err != nil {
 		return protocol.Message{}, err

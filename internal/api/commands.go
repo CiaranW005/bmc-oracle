@@ -61,6 +61,9 @@ func (a *API) sendCommand(
 		timeout,
 	)
 
+	// Reset and power-off may disconnect the PC agent before it replies.
+	// A response timeout means no failure was reported, not confirmed completion.
+	// Wake requires an explicit result confirming the PC came online.
 	if errors.Is(err, protocol.ErrResponseTimeout) {
 		switch command {
 		case protocol.TypeReset, protocol.TypePowerOff:
@@ -119,6 +122,8 @@ func (a *API) sendCommand(
 	writeResult(http.StatusOK, "completed", "")
 }
 
+// Allow extra time beyond the ESP32's 50-second wake deadline for its reply
+// to reach the server.
 func (a *API) Wake(w http.ResponseWriter, r *http.Request) {
 	a.sendCommand(w, r, protocol.TypeWake, 55*time.Second)
 }

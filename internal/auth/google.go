@@ -24,7 +24,9 @@ func NewGoogleAuthenticator() (*GoogleAuthenticator, error) {
 
 	allowedUsers := make(map[string]struct{})
 
-	for _, sub := range strings.Split(os.Getenv("GOOGLE_ALLOWED_SUBS"), ",") {
+	// GOOGLE_ALLOWED_SUBS is a comma-separated list of Google account subject IDs.
+	// An empty list denies access to every Google account.
+	for sub := range strings.SplitSeq(os.Getenv("GOOGLE_ALLOWED_SUBS"), ",") {
 		sub = strings.TrimSpace(sub)
 
 		if sub != "" {
@@ -58,6 +60,8 @@ func (g *GoogleAuthenticator) Verify(
 		return errors.New("Invalid Google issuer")
 	}
 
+	// A valid Google token proves identity; the subject must also be explicitly
+	// allowed to access this BMC.
 	if _, ok := g.allowedUsers[payload.Subject]; !ok {
 		return errors.New("Google account not authorised")
 	}
